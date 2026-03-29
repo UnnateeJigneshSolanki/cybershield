@@ -1,9 +1,13 @@
 import 'dart:math';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart'; // ✨ ADDED Hive
-import 'package:intl/intl.dart'; // ✨ ADDED for formatting dates
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/intl.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+
 import '../../core/theme.dart';
 import '../../core/cpu_provider.dart';
 import '../../core/battery_provider.dart';
@@ -16,120 +20,300 @@ class BenchmarksScreen extends StatefulWidget {
 }
 
 class _BenchmarksScreenState extends State<BenchmarksScreen> {
+
   bool _isRunning = false;
   bool _isFinished = false;
-  double _progress = 0.0;
-  String _currentTask = "Ready to test device performance?";
-  int _score = 0;
 
-  void _runBenchmark() async {
+  double _progress = 0;
+
+  String _currentTask = "Ready to test device performance";
+
+  int cpuSingleScore = 0;
+  int cpuMultiScore = 0;
+  int memoryScore = 0;
+  int mathScore = 0;
+  int finalScore = 0;
+
+  String deviceName = "Unknown";
+  int cpuCores = 0;
+  double benchmarkTime = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDeviceInfo();
+  }
+
+  Future<void> _loadDeviceInfo() async {
+
+    final info = DeviceInfoPlugin();
+
+    if (Platform.isAndroid) {
+      final android = await info.androidInfo;
+      deviceName = "${android.manufacturer} ${android.model}";
+    }
+
+    cpuCores = Platform.numberOfProcessors;
+
+    if (mounted) setState(() {});
+  }
+
+  Future<int> _measure(Future Function() task) async {
+
+    final sw = Stopwatch()..start();
+
+    await task();
+
+    sw.stop();
+
+    return sw.elapsedMilliseconds;
+  }
+
+  Future<void> _runBenchmark() async {
+
     setState(() {
       _isRunning = true;
       _isFinished = false;
-      _progress = 0.1;
-      _currentTask = "Running CPU Integer Test (Prime Crunching)...";
+      _progress = 0.05;
+      _currentTask = "Running CPU Single Core Test";
     });
+    await Future.delayed(const Duration(milliseconds: 300));
 
-    final stopwatch = Stopwatch()..start();
+    final totalTimer = Stopwatch()..start();
 
-    await compute(_cpuIntegerTask, 250000);
+    int singleTime =
+        await _measure(() => compute(_cpuIntegerTask, 350000));
+
+    cpuSingleScore = (1000000 / singleTime).round();
+
     if (!mounted) return;
+
     setState(() {
-      _progress = 0.4;
-      _currentTask = "Running CPU Float Test (Trigonometry)...";
+      _progress = 0.25;
+      _currentTask = "Running CPU Multi Core Test";
+    });
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    int cores = max(2, Platform.numberOfProcessors);
+
+    int multiTime = await _measure(() async {
+
+      List<Future> tasks = [];
+
+      for (int i = 0; i < cores; i++) {
+        tasks.add(compute(_cpuIntegerTask, 200000));
+      }
+
+      await Future.wait(tasks);
     });
 
-    await compute(_cpuFloatTask, 10000000);
+    cpuMultiScore = (1000000 / multiTime).round();
+
     if (!mounted) return;
-    setState(() {
-      _progress = 0.7;
-      _currentTask = "Running Memory I/O Test (Allocation)...";
-    });
 
-    await compute(_memoryTask, 15000000);
+    setState(() {
+      _progress = 0.5;
+      _currentTask = "Running Floating Point Test";
+    });
+    await Future.delayed(const Duration(milliseconds: 150));
+
+    int mathTime =
+        await _measure(() => compute(_cpuFloatTask, 12000000));
+
+    mathScore = (1000000 / mathTime).round();
+
     if (!mounted) return;
+
     setState(() {
-      _progress = 1.0;
-      _currentTask = "Finalizing Score...";
+      _progress = 0.75;
+      _currentTask = "Running Memory Test";
+    });
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    int memTime =
+        await _measure(() => compute(_memoryTask, 20000000));
+
+    memoryScore = (1000000 / memTime).round();
+
+    totalTimer.stop();
+
+    benchmarkTime = totalTimer.elapsedMilliseconds / 1000;
+
+    if (!mounted) return;
+
+    setState(() {
+      _progress = 0.9;
+      _currentTask = "Calculating Final Score";
     });
 
-    stopwatch.stop();
-    int timeTakenMs = stopwatch.elapsedMilliseconds;
-    int finalScore = (100000000 / (timeTakenMs > 0 ? timeTakenMs : 1)).round();
+    finalScore =
+        ((cpuSingleScore + cpuMultiScore + mathScore + memoryScore) / 4)
+            .round();
 
-    // ✨ NEW: SAVE THE SCORE TO HIVE
     final box = Hive.box('benchmarkLogs');
+
     await box.add({
       'score': finalScore,
       'timestamp': DateTime.now().toIso8601String(),
     });
 
-    if (mounted) {
-      setState(() {
-        _isRunning = false;
-        _isFinished = true;
-        _score = finalScore;
-        _currentTask = "Test completed in ${timeTakenMs / 1000} seconds";
-      });
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _isRunning = false;
+      _isFinished = true;
+      _progress = 1;
+      _currentTask = "Benchmark Completed";
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       backgroundColor: CyberTheme.background,
       appBar: AppBar(
         title: const Text("Benchmarks", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white70), onPressed: () => Navigator.pop(context)),
+        leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white70),
+            onPressed: () => Navigator.pop(context)),
       ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.speed, size: 80, color: _isRunning ? CyberTheme.primaryAccent : (_isFinished ? CyberTheme.primaryAccent : Colors.white24)),
+
+              Icon(
+                Icons.speed,
+                size: 80,
+                color: _isRunning
+                    ? CyberTheme.primaryAccent
+                    : (_isFinished
+                        ? CyberTheme.primaryAccent
+                        : Colors.white24),
+              ),
+
               const SizedBox(height: 30),
 
-              Text(_currentTask, textAlign: TextAlign.center, style: TextStyle(color: _isRunning ? CyberTheme.primaryAccent : Colors.white70, fontSize: 16)),
+              Text(
+                _currentTask,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: _isRunning
+                        ? CyberTheme.primaryAccent
+                        : Colors.white70,
+                    fontSize: 16),
+              ),
+
               const SizedBox(height: 20),
 
               if (_isRunning) ...[
-                LinearProgressIndicator(value: _progress, color: CyberTheme.primaryAccent, backgroundColor: Colors.white10, minHeight: 8),
+                LinearProgressIndicator(
+                    value: _progress,
+                    color: CyberTheme.primaryAccent,
+                    backgroundColor: Colors.white10,
+                    minHeight: 8),
+
                 const SizedBox(height: 10),
-                Text("${(_progress * 100).toInt()}%", style: const TextStyle(color: Colors.white)),
+
+                Text("${(_progress * 100).toInt()}%",
+                    style: const TextStyle(color: Colors.white)),
 
                 const SizedBox(height: 40),
+
                 _buildLiveMetricsPanel(),
               ],
 
               if (_isFinished) ...[
-                const Text("DEEP CLOAK SCORE", style: TextStyle(color: Colors.grey, letterSpacing: 1.5)),
-                Text("$_score", style: const TextStyle(color: CyberTheme.primaryAccent, fontSize: 60, fontWeight: FontWeight.bold)),
+
+                _scoreRow("CPU SINGLE CORE", cpuSingleScore),
+                _scoreRow("CPU MULTI CORE", cpuMultiScore),
+                _scoreRow("FLOATING POINT", mathScore),
+                _scoreRow("MEMORY", memoryScore),
+
+                const Divider(color: Colors.white24, height: 40),
+
+                const Text(
+                  "FINAL SCORE",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    letterSpacing: 1.5,
+                    fontSize: 12,
+                  ),
+                ),
+
+                Text(
+                  finalScore.toString(),
+                  style: const TextStyle(
+                      color: CyberTheme.primaryAccent,
+                      fontSize: 56,
+                      fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 20),
+
+                const Text(
+                  "DEVICE INFORMATION",
+                  style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                      letterSpacing: 1.5),
+                ),
+
+                const SizedBox(height: 10),
+
+                _scoreRow("DEVICE", deviceName),
+                _scoreRow("CPU CORES", cpuCores),
+                _scoreRow("BENCHMARK TIME", "${benchmarkTime.toStringAsFixed(2)} sec"),
               ],
 
-              const SizedBox(height: 50),
+              const SizedBox(height: 40),
 
               if (!_isRunning)
                 SizedBox(
                   width: double.infinity,
                   height: 55,
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: CyberTheme.primaryAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: CyberTheme.primaryAccent,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16))),
                     onPressed: _runBenchmark,
-                    child: Text(_isFinished ? "RUN AGAIN" : "START BENCHMARK", style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: Text(
+                        _isFinished ? "RUN AGAIN" : "START BENCHMARK",
+                        style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
                   ),
                 ),
 
               const SizedBox(height: 40),
 
-              // ✨ NEW: HISTORY PANEL
-              if (!_isRunning) _buildHistoryPanel(),
+              if (!_isRunning) _buildHistoryPanel()
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _scoreRow(String label, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          Text(value.toString(),
+              style: const TextStyle(
+                  color: CyberTheme.primaryAccent,
+                  fontWeight: FontWeight.bold))
+        ],
       ),
     );
   }
@@ -140,29 +324,35 @@ class _BenchmarksScreenState extends State<BenchmarksScreen> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: CyberTheme.primaryAccent.withValues(alpha: 0.2)),
+        border: Border.all(
+            color: CyberTheme.primaryAccent.withValues(alpha: 0.2)),
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          const Text("LIVE STRESS METRICS", style: TextStyle(color: CyberTheme.primaryAccent, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Consumer<CpuProvider>(
-                builder: (context, cpuProv, child) {
-                  int freq = cpuProv.cpuFreqs.isNotEmpty ? cpuProv.cpuFreqs[0] : 0;
-                  return _metricItem(Icons.memory, "CPU CLOCK", "$freq MHz");
-                },
-              ),
-              Container(width: 1, height: 40, color: Colors.white10),
-              Consumer<BatteryProvider>(
-                builder: (context, batProv, child) {
-                  double temp = batProv.batteryData['temperature'] ?? 0.0;
-                  return _metricItem(Icons.thermostat, "THERMAL", "${temp.toStringAsFixed(1)}°C");
-                },
-              ),
-            ],
+
+          Consumer<CpuProvider>(
+            builder: (context, cpuProv, child) {
+
+              int freq =
+                  cpuProv.cpuFreqs.isNotEmpty ? cpuProv.cpuFreqs[0] : 0;
+
+              return _metricItem(Icons.memory, "CPU CLOCK", "$freq MHz");
+            },
+          ),
+
+          Container(width: 1, height: 40, color: Colors.white10),
+
+          Consumer<BatteryProvider>(
+            builder: (context, batProv, child) {
+
+              double temp = batProv.batteryData['temperature'] ?? 0;
+
+              return _metricItem(
+                  Icons.thermostat,
+                  "THERMAL",
+                  "${temp.toStringAsFixed(1)}°C");
+            },
           ),
         ],
       ),
@@ -170,54 +360,101 @@ class _BenchmarksScreenState extends State<BenchmarksScreen> {
   }
 
   Widget _metricItem(IconData icon, String label, String value) {
+
     return Column(
       children: [
+
         Icon(icon, color: Colors.white54, size: 20),
+
         const SizedBox(height: 6),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
+
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 10)),
       ],
     );
   }
 
-  // ✨ NEW: The historical scores widget
   Widget _buildHistoryPanel() {
+
     return ValueListenableBuilder(
+
       valueListenable: Hive.box('benchmarkLogs').listenable(),
+
       builder: (context, Box box, _) {
+
         if (box.isEmpty) return const SizedBox.shrink();
 
-        // Get all logs, reverse them so newest is first, and take top 5
         final logs = box.values.toList().reversed.take(5).toList();
 
         return Column(
+
           crossAxisAlignment: CrossAxisAlignment.start,
+
           children: [
-            const Text("PREVIOUS LOGS", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+
+            const Text(
+              "PREVIOUS LOGS",
+              style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5),
+            ),
+
             const SizedBox(height: 12),
+
             ...logs.map((log) {
+
               final Map data = log as Map;
+
               final int score = data['score'];
-              final DateTime time = DateTime.parse(data['timestamp']);
-              final String formattedTime = DateFormat('MMM dd, yyyy • HH:mm').format(time);
+
+              final DateTime time =
+                  DateTime.parse(data['timestamp']);
+
+              final String formatted =
+                  DateFormat('MMM dd, yyyy • HH:mm').format(time);
 
               return Container(
+
                 margin: const EdgeInsets.only(bottom: 8),
+
                 padding: const EdgeInsets.all(16),
+
                 decoration: BoxDecoration(
-                  color: CyberTheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                    color: CyberTheme.surface,
+                    borderRadius: BorderRadius.circular(12)),
+
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+
                   children: [
-                    Text(formattedTime, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                    Text(score.toString(), style: const TextStyle(color: CyberTheme.primaryAccent, fontSize: 16, fontWeight: FontWeight.bold)),
+
+                    Text(formatted,
+                        style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12)),
+
+                    Text(score.toString(),
+                        style: const TextStyle(
+                            color: CyberTheme.primaryAccent,
+                            fontWeight: FontWeight.bold))
                   ],
                 ),
               );
-            }),
+            })
           ],
         );
       },
@@ -225,38 +462,57 @@ class _BenchmarksScreenState extends State<BenchmarksScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ISOLATE COMPUTE TASKS
-// ─────────────────────────────────────────────────────────────────────────────
-
 int _cpuIntegerTask(int limit) {
+
   int primes = 0;
+
   for (int i = 2; i < limit; i++) {
+
     bool isPrime = true;
+
     for (int j = 2; j * j <= i; j++) {
+
       if (i % j == 0) {
+
         isPrime = false;
+
         break;
       }
     }
+
     if (isPrime) primes++;
   }
+
   return primes;
 }
 
 double _cpuFloatTask(int limit) {
-  double result = 0.0;
+
+  double result = 0;
+
   for (int i = 1; i < limit; i++) {
+
     result += sin(i) * cos(i) + sqrt(i);
   }
+
   return result;
 }
 
 int _memoryTask(int size) {
-  List<int> list = List.generate(size, (index) => index * 2);
-  int sum = 0;
-  for (int i = 0; i < list.length; i += 100) {
-    sum += list[i];
+
+  List<int> buffer = List.filled(size, 0);
+
+  for (int i = 0; i < size; i++) {
+
+    buffer[i] = i * 2;
   }
+
+  int sum = 0;
+
+  for (int i = 0; i < size; i += 50) {
+
+    sum += buffer[i];
+  }
+
   return sum;
 }
