@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background_blue"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:id="@+id/header_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_alignParentTop="true">
+
+        <TextView
+            android:id="@+id/node_title_mem"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="[⚙️] SYS_MEM"
+            android:textColor="#8E8E93"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <FrameLayout
+            android:id="@+id/btn_sync_container"
+            android:layout_width="24dp"
+            android:layout_height="24dp">
+
+            <ImageView
+                android:id="@+id/sync_icon_cyan"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@android:drawable/ic_popup_sync"
+                android:tint="#00E5FF"
+                android:visibility="visible" />
+
+            <ImageView
+                android:id="@+id/sync_icon_white"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@android:drawable/ic_popup_sync"
+                android:rotation="180"
+                android:tint="#FFFFFF"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <RelativeLayout
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:layout_centerInParent="true">
+
+        <ProgressBar
+            android:id="@+id/node_ram_ring"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:indeterminate="false"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/circular_progress_cyan" />
+
+        <TextView
+            android:id="@+id/node_ram_val"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="--%"
+            android:textColor="#00E5FF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+    <TextView
+        android:id="@+id/node_storage_val"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentBottom="true"
+        android:text="Storage: --%"
+        android:textColor="#FFFFFF"
+        android:textSize="10sp" />
+</RelativeLayout>

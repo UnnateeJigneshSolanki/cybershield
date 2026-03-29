@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/widget_background_blue"
+    android:orientation="horizontal"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="14dp"
+    android:gravity="center_vertical">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="[⚙️] RAM:"
+            android:textColor="#B300E5FF"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textAllCaps="true" />
+
+        <TextView
+            android:id="@+id/strip_ram_val"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="--"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="|"
+            android:textColor="#1AFFFFFF"
+            android:layout_marginHorizontal="10dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="[⚡] BAT:"
+            android:textColor="#00E5FF"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textAllCaps="true" />
+
+        <TextView
+            android:id="@+id/strip_bat_val"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="--"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="|"
+            android:textColor="#1AFFFFFF"
+            android:layout_marginHorizontal="10dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="[🌡️]"
+            android:textColor="#00E5FF"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/strip_temp_val"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="--"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/btn_sync_container"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="8dp">
+
+        <ImageView
+            android:id="@+id/sync_icon_cyan"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@android:drawable/ic_popup_sync"
+            android:tint="#00E5FF"
+            android:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/sync_icon_white"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@android:drawable/ic_popup_sync"
+            android:rotation="180"
+            android:tint="#FFFFFF"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+</LinearLayout>
