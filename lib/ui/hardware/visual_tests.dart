@@ -1,27 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // ✅ This was the cause of the error. It is now at the top.
+import 'package:flutter/services.dart'; 
 import '../../core/theme.dart';
 
 // --- 1. DISPLAY TEST (Dead Pixel Check) ---
 class DisplayTestScreen extends StatefulWidget {
   const DisplayTestScreen({super.key});
-
   @override
   State<DisplayTestScreen> createState() => _DisplayTestScreenState();
 }
-
 class _DisplayTestScreenState extends State<DisplayTestScreen> {
   int _index = 0;
   // Cycle: Red -> Green -> Blue -> White -> Black
   final List<Color> _colors = [Colors.red, Colors.green, Colors.blue, Colors.white, Colors.black];
   final List<String> _names = ["RED", "GREEN", "BLUE", "WHITE", "BLACK"];
-
   void _nextColor() {
     setState(() {
       if (_index < _colors.length - 1) {
         _index++;
       } else {
-        // Finish Test: Return 'true' (Passed) to the previous screen
         Navigator.pop(context, true);
       }
     });
@@ -49,15 +45,12 @@ class _DisplayTestScreenState extends State<DisplayTestScreen> {
       ),
     );
   }
-
   @override
   void dispose() {
-    // Restore UI bars when leaving
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 }
-
 // --- 2. MULTITOUCH TEST ---
 class MultitouchTestScreen extends StatefulWidget {
   const MultitouchTestScreen({super.key});
@@ -67,9 +60,7 @@ class MultitouchTestScreen extends StatefulWidget {
 }
 
 class _MultitouchTestScreenState extends State<MultitouchTestScreen> {
-  // Track multiple touch points
   final Map<int, Offset> _touches = {};
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -111,20 +102,15 @@ class _MultitouchTestScreenState extends State<MultitouchTestScreen> {
 class TouchPainter extends CustomPainter {
   final Map<int, Offset> touches;
   TouchPainter(this.touches);
-
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
-
-    // Different colors for different fingers
     final colors = [Colors.red, Colors.green, Colors.blue, Colors.yellow, Colors.purple];
-
     touches.forEach((id, offset) {
       paint.color = colors[id % colors.length];
       canvas.drawCircle(offset, 40, paint);
     });
   }
-
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

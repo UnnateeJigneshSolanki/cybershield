@@ -6,21 +6,16 @@ import 'cpu_analysis_screen.dart';
 import 'vulkan_info_screen.dart';
 import 'opengl_info_screen.dart';
 import 'disk_partition_screen.dart';
-import 'bluetooth_info_screen.dart'; // ✨ ADDED: Bluetooth Info Screen
+import 'bluetooth_info_screen.dart';
 
 class HardwarePage extends StatefulWidget {
   const HardwarePage({super.key});
-
   @override
   State<HardwarePage> createState() => _HardwarePageState();
 }
-
 class _HardwarePageState extends State<HardwarePage> {
   static const platform = MethodChannel("com.cybershield/hardware");
-  
-  // ✨ Cyan accent to match rest of the app
   static const Color accentColor = CyberTheme.primaryAccent; 
-
   Map cpu = {};
   Map gpu = {};
   Map display = {};
@@ -162,7 +157,7 @@ class _HardwarePageState extends State<HardwarePage> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 2.5, // Adjusted for better spacing
+        childAspectRatio: 2.3,
         mainAxisSpacing: 16,
         crossAxisSpacing: 16,
       ),
@@ -275,32 +270,39 @@ class _HardwarePageState extends State<HardwarePage> {
   }
 
   Widget _buildGpuSection() {
-    return _buildSectionCard(
-      title: "GPU",
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.grid_view, color: Colors.white, size: 48),
-            const SizedBox(width: 16),
-            Column(
+  return _buildSectionCard(
+    title: "GPU",
+    children: [
+      Row(
+        children: [
+          const Icon(Icons.grid_view, color: Colors.white, size: 48),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                    gpu["renderer"] ?? "Scanning Hardware...", // Change from "Unknown"
-                    style: TextStyle(
-                        color: gpu["renderer"] == null ? Colors.white24 : accentColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold
-                    )
+                  gpu["renderer"] ?? "Scanning Hardware...",
+                  style: TextStyle(
+                    color: gpu["renderer"] == null ? Colors.white24 : accentColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                Text(gpu["vendor"] ?? "Vendor Information", style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                Text(
+                  gpu["vendor"] ?? "Vendor Information",
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
-          ],
-        ),
-      ],
-    );
-  }
+          ),
+        ],
+      ),
+    ],
+  );
+}
 
   Widget _buildGraphicsApiSection() {
     return Column(
@@ -330,8 +332,8 @@ class _HardwarePageState extends State<HardwarePage> {
   }
 
   Widget _buildDisplaySection() {
-    final w = display["physicalWidth"] ?? 1080;
-    final h = display["physicalHeight"] ?? 2400;
+    final w = int.tryParse(display["physicalWidth"].toString()) ?? 1080;
+    final h = int.tryParse(display["physicalHeight"].toString()) ?? 2400;
     return _buildSectionCard(
       title: "Display",
       trailing: IconButton( // ✨ UPDATED: Added Settings Icon
@@ -340,30 +342,43 @@ class _HardwarePageState extends State<HardwarePage> {
       ),
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Icon(Icons.smartphone, color: Colors.white, size: 64),
             const SizedBox(width: 20),
-            Column(
+           Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("$w x $h", style: const TextStyle(color: accentColor, fontSize: 22, fontWeight: FontWeight.bold)),
-                Text("${display["refreshRate"] ?? 144} Hz • ${display["averagePpi"]?.toInt() ?? 395} ppi", style: const TextStyle(color: Colors.white70, fontSize: 14)),
-              ],
+              children: [ Text("$w x $h",
+              style: const TextStyle(
+              color: accentColor,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+          ),
+          
+            Text("${(double.tryParse(display["refreshRate"].toString()) ?? 60).toStringAsFixed(1)} Hz • ${display["averagePpi"]?.toInt() ?? 395} ppi",
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            overflow: TextOverflow.ellipsis,
+             ),
+             
+        ],
+      ),
+    ),
+  ],
+),
         const SizedBox(height: 16),
-        Row(
+        Wrap(
+          spacing: 8,
           children: [
-            _buildChip("${display["screenInches"]?.toStringAsFixed(2) ?? "6.67"}\""),
-            const SizedBox(width: 8),
+            _buildChip("${(double.tryParse(display["screenInches"].toString()) ?? 6.67).toStringAsFixed(2)}\""),
             _buildChip("xhdpi"),
-          ],
-        ),
+             ],
+             ),
         const SizedBox(height: 24),
         _buildInfoGrid({
           "Current resolution": "$w x $h",
-          "Screen size": "${display["screenInches"]?.toStringAsFixed(2) ?? "6.67"} in",
+          "Screen size": "${(double.tryParse(display["screenInches"].toString()) ?? 6.67).toStringAsFixed(2)} in",
           "Aspect ratio": "20:9",
           "HDR support": "No",
           "Density": "${display["densityDpi"] ?? 400} dpi",

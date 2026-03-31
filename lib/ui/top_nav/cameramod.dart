@@ -3,18 +3,13 @@ import '../../services/native_camera_service.dart';
 
 class CameraPage extends StatefulWidget {
   const CameraPage({super.key});
-
   @override
   State<CameraPage> createState() => _CameraPageState();
 }
-
 class _CameraPageState extends State<CameraPage> {
-
   final NativeCameraService _native = NativeCameraService();
-
   List<Map<String, dynamic>> _cameraInfo = [];
   bool _loading = true;
-
   @override
   void initState() {
     super.initState();
