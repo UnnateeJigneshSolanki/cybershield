@@ -3,29 +3,23 @@ import '../../services/native_camera_service.dart';
 
 class CameraPage extends StatefulWidget {
   const CameraPage({super.key});
-
   @override
   State<CameraPage> createState() => _CameraPageState();
 }
-
 class _CameraPageState extends State<CameraPage> {
   final NativeCameraService _native = NativeCameraService();
-
   List<Map<String, dynamic>> _cameraInfo = [];
   bool _loading = true;
-
   @override
   void initState() {
     super.initState();
     _loadCameraInfo();
   }
-
   Future<void> _loadCameraInfo() async {
     try {
       final data = await _native.getCameraInfo();
 
       if (!mounted) return;
-
       setState(() {
         _cameraInfo = data;
         _loading = false;
@@ -34,12 +28,10 @@ class _CameraPageState extends State<CameraPage> {
       setState(() => _loading = false);
     }
   }
-
   @override
   Widget build(BuildContext context) {
     const accent = Color(0xFF00E5FF);
     const bg = Color(0xFF00012B);
-
     if (_loading) {
       return const Scaffold(
         backgroundColor: bg,
@@ -48,19 +40,16 @@ class _CameraPageState extends State<CameraPage> {
         ),
       );
     }
-
     if (_cameraInfo.isEmpty) {
       return const Scaffold(
         backgroundColor: bg,
         body: Center(
-          child: Text(
-            "No camera hardware detected",
+          child: Text( "No camera hardware detected",
             style: TextStyle(color: Colors.white70),
           ),
         ),
       );
     }
-
     return Scaffold(
       backgroundColor: bg,
       body: SafeArea(
@@ -68,24 +57,19 @@ class _CameraPageState extends State<CameraPage> {
           padding: const EdgeInsets.all(12),
           itemCount: _cameraInfo.length,
           itemBuilder: (context, index) {
-            final cam = _cameraInfo[index];
-            return _CameraCard(data: cam);
+            return _CameraCard(data: _cameraInfo[index]);
           },
         ),
       ),
     );
   }
 }
-
 class _CameraCard extends StatelessWidget {
   final Map<String, dynamic> data;
-
   const _CameraCard({required this.data});
-
   @override
   Widget build(BuildContext context) {
     const accent = Color(0xFF00E5FF);
-
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
       padding: const EdgeInsets.all(18),
@@ -103,11 +87,7 @@ class _CameraCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          /// Camera title
-          Text( "${data['facing']}",
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          Text("${data['facing']}",
             style: const TextStyle(
               color: accent,
               fontWeight: FontWeight.bold,
@@ -115,28 +95,18 @@ class _CameraCard extends StatelessWidget {
               letterSpacing: 1.2,
             ),
           ),
-
           const SizedBox(height: 18),
-
-          /// Camera icon + megapixels
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-
-              const Icon(
-                Icons.camera_alt_rounded,
+              const Icon(Icons.camera_alt_rounded,
                 size: 60,
                 color: accent,
               ),
-
               const SizedBox(width: 20),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
-                    /// Safe large text
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
@@ -149,11 +119,8 @@ class _CameraCard extends StatelessWidget {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 4),
-
-                    Text(
-                      data['apertures'] ?? "",
+                    Text( data['apertures'] ?? "",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -168,64 +135,56 @@ class _CameraCard extends StatelessWidget {
           ),
 
           const SizedBox(height: 20),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final tileWidth = (constraints.maxWidth - 12) / 2;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  _InfoTile("Resolution", data['resolution'], tileWidth),
+                  _InfoTile("Focal length", data['focalLengths'], tileWidth),
+                  _InfoTile("Sensor width", data['sensorWidthMm'] != null
+                          ? "${(data['sensorWidthMm'] as num).toStringAsFixed(2)} mm" : "-",
+                      tileWidth),
+                  _InfoTile("Sensor height", data['sensorHeightMm'] != null
+                          ? "${(data['sensorHeightMm'] as num).toStringAsFixed(2)} mm" : "-",
+                      tileWidth),
+                  _InfoTile("Pixel size", data['pixelSize'], tileWidth),
+                  _InfoTile("Sensor diagonal", data['sensorDiagonal'], tileWidth),
+                  _InfoTile("Min focus", data['minFocusDistance'], tileWidth),
+                  _InfoTile("Flash", data['flashSupport'], tileWidth),
+                  _InfoTile("OIS", data['oisSupport'], tileWidth),
+                  _InfoTile("RAW capture",(data['rawSupport'] ?? false) ? "Yes" : "No", tileWidth),
+                  _InfoTile("Max ISO", data['maxISO'], tileWidth),
+                  _InfoTile("Max FPS", data['maxFPS'], tileWidth),
+                  _InfoTile("Max video", data['maxVideo'], tileWidth),
+                  _InfoTile("Max zoom", "${data['maxZoom']}x", tileWidth),
+                  _InfoTile("Face detect", data['faceDetection'], tileWidth),
+                  _InfoTile("Hardware level", data['hardwareLevel'], tileWidth),
+                  _InfoTile("Orientation", "${data['orientation']}°", tileWidth),
 
-          /// Hardware details grid
-          GridView(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 6,
-            ),
-            children: [
-
-              _InfoTile("Resolution", data['resolution']),
-              _InfoTile("Focal length", data['focalLengths']),
-              _InfoTile("Sensor width", data['sensorWidthMm'] != null
-              ? "${(data['sensorWidthMm'] as num).toStringAsFixed(2)} mm" : "-",
-              ),
-              _InfoTile( "Sensor height", data['sensorHeightMm'] != null
-              ? "${(data['sensorHeightMm'] as num).toStringAsFixed(2)} mm" : "-",
-              ),
-              _InfoTile("Pixel size", data['pixelSize']),
-              _InfoTile("Sensor diagonal", data['sensorDiagonal']),
-              _InfoTile("Min focus", data['minFocusDistance']),
-              _InfoTile("Flash", data['flashSupport']),
-              _InfoTile("OIS", data['oisSupport']),
-              _InfoTile("RAW capture", (data['rawSupport'] ?? false) ? "Yes" : "No"),
-              _InfoTile("Max ISO", data['maxISO']),
-              _InfoTile("Max FPS", data['maxFPS']),
-              _InfoTile("Max video", data['maxVideo']),
-              _InfoTile("Max zoom", "${data['maxZoom']}x"),
-              _InfoTile("Face detect", data['faceDetection']),
-              _InfoTile("Hardware level", data['hardwareLevel']),
-              _InfoTile("Orientation", "${data['orientation']}°"),
-
-            ],
-          )
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
   }
 }
-
 class _InfoTile extends StatelessWidget {
   final String label;
   final dynamic value;
-
-  const _InfoTile(this.label, this.value);
-
+  final double width;
+  const _InfoTile(this.label, this.value, this.width);
   @override
   Widget build(BuildContext context) {
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+    return SizedBox(
+      width: width,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Text(
             label,
             maxLines: 1,
@@ -235,11 +194,8 @@ class _InfoTile extends StatelessWidget {
               fontSize: 11,
             ),
           ),
-
           const SizedBox(height: 2),
-
-          Text(
-            value?.toString() ?? "-",
+          Text(value?.toString() ?? "-",
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
