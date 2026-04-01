@@ -4,5 +4,7 @@
     android:minHeight="110dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_memory_node"
+    android:previewImage="@drawable/widget_preview_memory"
+    android:previewLayout="@layout/widget_memory_node"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />

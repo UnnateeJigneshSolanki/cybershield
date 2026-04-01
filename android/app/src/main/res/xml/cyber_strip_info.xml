@@ -4,5 +4,7 @@
     android:minHeight="40dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_cyber_strip"
+    android:previewImage="@drawable/widget_preview_strip"
+    android:previewLayout="@layout/widget_cyber_strip"
     android:resizeMode="horizontal"
     android:widgetCategory="home_screen" />
