@@ -1,18 +1,14 @@
-package com.example.csh // ⚠️ Make sure this matches your actual package name!
-
+package com.example.csh 
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.Intent
 import android.content.IntentFilter
-
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
-
 import android.os.BatteryManager
 import android.os.Build
-
 import android.telephony.CellInfo
 import android.telephony.CellInfoGsm
 import android.telephony.CellInfoLte
@@ -309,18 +305,18 @@ class MainActivity: FlutterFragmentActivity() {
     private fun getDeepNetworkInfo(context: Context): Map<String, Any> {
         val netInfo = mutableMapOf<String, Any>()
         try {
-            // --- 1. Wi-Fi Data ---
+            // 1. Wi-Fi Data
             val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
             val wifiInfo = wifiManager.connectionInfo
             netInfo["ssid"] = wifiInfo.ssid?.replace("\"", "") ?: "Unknown"
             netInfo["linkSpeed"] = wifiInfo.linkSpeed
             netInfo["rssi"] = wifiInfo.rssi
 
-            // ✨ SEPARATED WI-FI IP
+            //  SEPARATED WI-FI IP
             val ip = wifiInfo.ipAddress
             netInfo["wifi_ip"] = if (ip != 0) String.format("%d.%d.%d.%d", (ip and 0xff), (ip shr 8 and 0xff), (ip shr 16 and 0xff), (ip shr 24 and 0xff)) else "Disconnected"
 
-            // ✨ UPDATED: SEPARATE CELLULAR IP SCANNER (Ignores dummy interfaces)
+            //  UPDATED: SEPARATE CELLULAR IP SCANNER (Ignores dummy interfaces)
             var cellIp = "Disconnected"
             try {
                 val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
@@ -335,11 +331,11 @@ class MainActivity: FlutterFragmentActivity() {
                             val ipStr = enumIpAddr.hostAddress
                             if (!ipStr.isNullOrEmpty()) {
                                 cellIp = ipStr
-                                break // ✨ We found the real IP! Stop the inner loop.
+                                break 
                             }
                         }
                     }
-                    if (cellIp != "Disconnected") break // ✨ Stop checking other antennas!
+                    if (cellIp != "Disconnected") break 
                 }
             } catch (ex: Exception) { }
             netInfo["cellular_ip"] = cellIp
@@ -390,15 +386,10 @@ class MainActivity: FlutterFragmentActivity() {
             displayInfo["logicalHeight"] = metrics.heightPixels
             displayInfo["physicalWidth"] = realMetrics.widthPixels
             displayInfo["physicalHeight"] = realMetrics.heightPixels
-
-            // ✨ THE FIX: Get exact X and Y hardware pixels per inch
             displayInfo["exactPpiX"] = realMetrics.xdpi
             displayInfo["exactPpiY"] = realMetrics.ydpi
-
-            // Average them out for the main readout (matches DevCheck)
             displayInfo["averagePpi"] = ((realMetrics.xdpi + realMetrics.ydpi) / 2.0)
-
-            displayInfo["densityDpi"] = metrics.densityDpi // Keep logical for software reference
+            displayInfo["densityDpi"] = metrics.densityDpi 
             displayInfo["refreshRate"] = display.refreshRate
 
             val xInches = realMetrics.widthPixels.toDouble() / realMetrics.xdpi
@@ -413,10 +404,10 @@ class MainActivity: FlutterFragmentActivity() {
         return displayInfo
     }
 
-    // 7. DEEP CAMERA HARDWARE
-    private fun getDeepCameraInfo(context: Context): List<Map<String, Any>> {
+   private fun getDeepCameraInfo(context: Context): List<Map<String, Any>> {
 
     val cameraList = mutableListOf<Map<String, Any>>()
+    val seenSensors = mutableSetOf<String>()
 
     try {
 
@@ -427,7 +418,19 @@ class MainActivity: FlutterFragmentActivity() {
 
             val characteristics = manager.getCameraCharacteristics(cameraId)
 
+            val capabilities = characteristics.get(
+                android.hardware.camera2.CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES
+            )
+
+            // Skip logical cameras
+            val isLogical = capabilities?.contains(
+                android.hardware.camera2.CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_LOGICAL_MULTI_CAMERA
+            ) ?: false
+
+            if (isLogical) continue
+
             val cameraInfo = mutableMapOf<String, Any>()
+            cameraInfo["cameraId"] = cameraId
 
             // FRONT / REAR
             val facing =
@@ -445,7 +448,7 @@ class MainActivity: FlutterFragmentActivity() {
                 characteristics.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE)
 
             if (size != null) {
-                val mp = (size.width * size.height) / 1000000.0
+                val mp = (size.width.toDouble() * size.height.toDouble()) / 1_000_000
                 cameraInfo["megapixels"] = String.format("%.1f MP", mp)
                 cameraInfo["resolution"] = "${size.width} x ${size.height}"
             }
@@ -464,13 +467,51 @@ class MainActivity: FlutterFragmentActivity() {
             cameraInfo["focalLengths"] =
                 focalLengths?.joinToString(", ") { "${it} mm" } ?: "Unknown"
 
+            // LENS TYPE
+            val focal = focalLengths?.firstOrNull()
+
+            val lensType = when {
+                focal != null && focal < 2.0 -> "Ultra Wide"
+                focal != null && focal < 4.0 -> "Wide"
+                focal != null && focal < 8.0 -> "Telephoto"
+                focal != null && focal < 15.0 -> "Periscope"
+                else -> "Standard"
+            }
+
+            cameraInfo["lensType"] = lensType
+
             // SENSOR SIZE
             val sensorSize =
                 characteristics.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
 
             if (sensorSize != null) {
+
                 cameraInfo["sensorWidthMm"] = sensorSize.width
                 cameraInfo["sensorHeightMm"] = sensorSize.height
+
+                if (facing != null) {
+                    val key = "${facing}_${sensorSize.width}_${sensorSize.height}"
+                    if (seenSensors.contains(key)) continue
+                    seenSensors.add(key)
+                }
+
+                val diagonal = kotlin.math.sqrt(
+                    (sensorSize.width * sensorSize.width +
+                     sensorSize.height * sensorSize.height).toDouble()
+                )
+
+                cameraInfo["sensorDiagonal"] = String.format("%.2f mm", diagonal)
+            }
+
+            // PIXEL SIZE
+            if (size != null && sensorSize != null) {
+
+                val pixelWidth = sensorSize.width / size.width
+                val pixelHeight = sensorSize.height / size.height
+
+                val pixelMicron = ((pixelWidth + pixelHeight) / 2) * 1000
+
+                cameraInfo["pixelSize"] = String.format("%.2f µm", pixelMicron)
             }
 
             // HARDWARE LEVEL
@@ -486,9 +527,6 @@ class MainActivity: FlutterFragmentActivity() {
             }
 
             // RAW SUPPORT
-            val capabilities =
-                characteristics.get(android.hardware.camera2.CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
-
             val rawSupported =
                 capabilities?.contains(
                     android.hardware.camera2.CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_RAW
@@ -496,21 +534,109 @@ class MainActivity: FlutterFragmentActivity() {
 
             cameraInfo["rawSupport"] = rawSupported
 
+            // OIS SUPPORT
+            val oisModes =
+                characteristics.get(android.hardware.camera2.CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION)
+
+            cameraInfo["oisSupport"] =
+                if (oisModes != null &&
+                    oisModes.contains(
+                        android.hardware.camera2.CameraCharacteristics.LENS_OPTICAL_STABILIZATION_MODE_ON
+                    )
+                ) "Yes" else "No"
+
+            // MAX ISO
+            val isoRange =
+                characteristics.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
+
+            if (isoRange != null) {
+                cameraInfo["maxISO"] = isoRange.upper
+            }
+
+            // MAX VIDEO RESOLUTION
+            val map =
+                characteristics.get(android.hardware.camera2.CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+
+            val videoSizes =
+                map?.getOutputSizes(android.media.MediaRecorder::class.java)
+
+            if (videoSizes != null) {
+                val max = videoSizes.maxByOrNull { it.width * it.height }
+                if (max != null) {
+                    cameraInfo["maxVideo"] = "${max.width}x${max.height}"
+                }
+            }
+
             // MAX ZOOM
             val zoom =
                 characteristics.get(android.hardware.camera2.CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM)
 
-            cameraInfo["maxZoom"] = zoom ?: 1.0
+            cameraInfo["maxZoom"] =
+                String.format("%.1f", zoom ?: 1.0)
 
+            // MINIMUM FOCUS DISTANCE
+            val minFocus =
+                characteristics.get(
+                    android.hardware.camera2.CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE
+                )
+
+            if (minFocus != null && minFocus > 0f) {
+                val focusMeters = 1 / minFocus
+                cameraInfo["minFocusDistance"] =
+                    String.format("%.2f m", focusMeters)
+            } else {
+                cameraInfo["minFocusDistance"] = "Fixed Focus"
+            }
+
+            // FLASH SUPPORT
+            val flashAvailable =
+                characteristics.get(
+                    android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE
+                ) ?: false
+
+            cameraInfo["flashSupport"] =
+                if (flashAvailable) "Yes" else "No"
+
+            // FACE DETECTION
+            val faceModes =
+                characteristics.get(
+                    android.hardware.camera2.CameraCharacteristics.STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES
+                )
+
+            cameraInfo["faceDetection"] =
+                if (faceModes != null && faceModes.isNotEmpty())
+                    "Supported"
+                else
+                    "Not Supported"
+
+            // MAX FPS
+            val frameDuration =
+                characteristics.get(
+                    android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_MAX_FRAME_DURATION
+                )
+
+            if (frameDuration != null) {
+                val fps = (1_000_000_000.0 / frameDuration)
+                cameraInfo["maxFPS"] =
+                    String.format("%.0f fps", fps)
+            }
+
+            // SENSOR ORIENTATION
+            val orientation =
+                characteristics.get(
+                    android.hardware.camera2.CameraCharacteristics.SENSOR_ORIENTATION
+                )
+
+            cameraInfo["orientation"] = orientation ?: 0
             cameraList.add(cameraInfo)
         }
-
-    } catch (e: Exception) {
-        e.printStackTrace()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            }
+        return cameraList
     }
-
-    return cameraList
-}
+ 
+ 
 
     // 8. DEEP STORAGE INFO (StatFs Partitions)
     private fun getDeepStorageInfo(): Map<String, Any> {
@@ -594,14 +720,14 @@ class MainActivity: FlutterFragmentActivity() {
 
             osInfo["oemBuild"] = get.invoke(null, "ro.build.display.id", "Unknown") as String
 
-            // ✨ Get Active Slot (e.g., _a or _b)
+            //  Get Active Slot (e.g., _a or _b)
             osInfo["activeSlot"] = get.invoke(null, "ro.boot.slot_suffix", "") as String
         } catch (e: Exception) {
             osInfo["oemBuild"] = android.os.Build.DISPLAY
             osInfo["activeSlot"] = ""
         }
 
-        // ✨ Get Instruction Sets (e.g., arm64-v8a armeabi-v7a)
+        //  Get Instruction Sets (e.g., arm64-v8a armeabi-v7a)
         osInfo["instructionSets"] = android.os.Build.SUPPORTED_ABIS.joinToString(" ")
 
         return osInfo
