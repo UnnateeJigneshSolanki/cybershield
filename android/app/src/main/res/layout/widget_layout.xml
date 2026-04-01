@@ -5,7 +5,6 @@
     android:background="@drawable/widget_background_blue"
     android:orientation="vertical"
     android:padding="20dp">
-
     <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content">
         <TextClock android:id="@+id/wid_date" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:format12Hour="EEE, MMM d" android:format24Hour="EEE, MMM d"
